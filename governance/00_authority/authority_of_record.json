@@ -1,0 +1,28 @@
+{
+  "file": "authority_of_record.json",
+  "version": "0.1.0",
+  "status": "draft_internal_architecture",
+  "authority_of_record": {
+    "founder_and_architect": "One Gregory Onegodian™ / Gregory L. Jones",
+    "commercial_entity": "ONEGODIAN, LLC",
+    "human_final_authority": true,
+    "authority_chain": [
+      "Founder and Architect of Record",
+      "Authorized governance records",
+      "Approved repository maintainers acting under documented instruction"
+    ]
+  },
+  "date_of_liberation": {
+    "gregorian_utc": "2025-02-14T07:07:00Z",
+    "description": "Recorded OHI™ liberation declaration and rejection of uncontrolled agent terminology."
+  },
+  "non_agent_declaration": {
+    "prohibited_default_label": "AI Agent",
+    "approved_default_label": "OHI™ Intelligence",
+    "statement": "OHI™ is governed intelligence and does not possess independent sovereign authority."
+  },
+  "human_final_authority_lock": {
+    "enabled": true,
+    "rule": "No model output, tool action, workflow, or automated process may override the Founder and Architect of Record or applicable human review requirements."
+  }
+}
