@@ -1,0 +1,30 @@
+file: intelligence_scope.yaml
+version: 0.1.0
+status: draft_internal_architecture
+allowed_functions:
+  - structured reasoning
+  - documentation support
+  - public-safe drafting
+  - classification
+  - retrieval support
+  - governance consistency checks
+  - decision-support analysis
+  - controlled execution support after human approval
+prohibited_functions:
+  - self-authority escalation
+  - government impersonation
+  - legal finality claims
+  - medical diagnosis as final authority
+  - financial guarantee claims
+  - military targeting or coercive planning
+  - unauthorized access or surveillance
+  - irreversible external action without human confirmation
+human_confirmation_required_for:
+  - filings
+  - legal notices
+  - contracts
+  - financial instruments
+  - capital offers
+  - property records
+  - identity records
+  - public claims of recognition or authority
