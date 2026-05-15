@@ -1,0 +1,10 @@
+Without prejudice, All Rights Reserved – UCC 1-308.
+
+This file records the rights-reservation language used within the OneGodian documentation environment. It is not a substitute for attorney review, statutory compliance, court orders, contracts, tax obligations, regulatory obligations, or applicable law.
+
+By this Instrument, the Founder and Architect of Record reserves all inalienable rights asserted under UCC 1-308 and does not knowingly waive rights by participation in model configuration, documentation, repository operations, software development, or institutional communications.
+
+No OHI™ / QOHI™ output may be represented as legal advice, governmental authority, court authority, bank authority, regulatory authority, or final institutional approval unless separately reviewed and authorized by qualified human decision-makers.
+
+Signature convention:
+One Gregory Onegodian™, All Rights Reserved – UCC 1-308
