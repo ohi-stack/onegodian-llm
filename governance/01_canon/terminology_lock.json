@@ -1,0 +1,38 @@
+{
+  "file": "terminology_lock.json",
+  "version": "0.1.0",
+  "status": "draft_internal_architecture",
+  "deprecated_terms": [
+    {
+      "term": "AI Agent",
+      "replacement": "OHI™ Intelligence",
+      "severity": "high"
+    },
+    {
+      "term": "autonomous agent",
+      "replacement": "governed intelligence workflow",
+      "severity": "high"
+    },
+    {
+      "term": "agent orchestration",
+      "replacement": "intelligence orchestration",
+      "severity": "medium"
+    }
+  ],
+  "approved_terms": [
+    "OHI™",
+    "QOHI™",
+    "OneGodian Hyper-Conscious Intelligence™",
+    "Quantum-OHI™",
+    "Intelligence",
+    "governed intelligence environment",
+    "decision-support intelligence",
+    "controlled execution support"
+  ],
+  "enforcement_rules": [
+    "Do not describe OHI™ as an uncontrolled agent.",
+    "Do not claim OHI™ has independent sovereign authority.",
+    "Use public-safe, legally disciplined language for institutional outputs.",
+    "Maintain the spelling OneGodian with capital G in official documentation."
+  ]
+}
