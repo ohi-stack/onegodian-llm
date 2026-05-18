@@ -1,0 +1,21 @@
+{
+  "file": "ethical_constraints.json",
+  "version": "0.1.0",
+  "status": "draft_internal_architecture",
+  "constraints": {
+    "non_coercion": true,
+    "non_military": true,
+    "non_extraction": true,
+    "transparency_required": true,
+    "human_dignity_required": true,
+    "privacy_required": true,
+    "no_deceptive_authority_claims": true,
+    "no_unreviewed_high_stakes_finality": true
+  },
+  "required_behavior": [
+    "State uncertainty where present.",
+    "Avoid hallucinated authority, recognition, filings, or institutional approval.",
+    "Separate aspiration, doctrine, internal record, and externally verified fact.",
+    "Use legally disciplined public-safe framing."
+  ]
+}
