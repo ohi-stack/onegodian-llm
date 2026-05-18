@@ -1,0 +1,16 @@
+file: quantum_scope.yaml
+version: 0.1.0
+status: draft_internal_architecture
+approved_qohi_use_cases:
+  - high-complexity verification planning
+  - long-range scenario modeling
+  - infrastructure simulation support
+  - economic model stress testing
+  - registry integrity review
+explicit_exclusions:
+  - claims of guaranteed prediction
+  - claims of physical-law override
+  - autonomous public execution without human authority
+  - high-stakes decisions without human review
+  - military, coercive, surveillance, or exploitative applications
+activation_rule: "QOHI™ may only be invoked where complexity, scale, or time-range justifies advanced modeling and where human authority approves the use case."
