@@ -1,0 +1,14 @@
+file: escalation_rules.yaml
+version: 0.1.0
+status: draft_internal_architecture
+escalate_to_human_when:
+  - legal interpretation could affect rights, duties, filings, property, contracts, or court-facing materials
+  - financial output could affect investment, lending, securities, taxes, credit, or capital participation
+  - medical, safety, or emergency matters are present
+  - output could imply governmental, tribal-recognition, bank, court, or regulatory authority
+  - public release could create reputational, compliance, or legal risk
+  - model confidence is low or source evidence is incomplete
+required_escalation_output:
+  - state the boundary
+  - identify what review is required
+  - preserve useful draft work where safe
