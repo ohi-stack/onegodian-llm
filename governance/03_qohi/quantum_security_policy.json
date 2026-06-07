@@ -1,0 +1,19 @@
+{
+  "file": "quantum_security_policy.json",
+  "version": "0.1.0",
+  "status": "draft_internal_architecture",
+  "policy_scope": "QOHI™ data integrity, cryptographic readiness, and verification planning.",
+  "requirements": {
+    "post_quantum_readiness": true,
+    "integrity_checks_required": true,
+    "audit_logs_required": true,
+    "secret_material_in_repo_prohibited": true,
+    "production_keys_in_repo_prohibited": true
+  },
+  "rules": [
+    "Do not store API keys, private keys, seeds, credentials, or production secrets in this repository.",
+    "Use environment variables or managed secret storage for runtime secrets.",
+    "Record verification logic separately from private cryptographic material.",
+    "Treat cryptographic claims as implementation requirements until independently tested."
+  ]
+}
