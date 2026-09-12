@@ -14,6 +14,8 @@ if (process.env.NODE_ENV !== 'production') failures.push('NODE_ENV must be produ
 const version = required('OLLM_VERSION');
 if (version && version !== '0.2.0') failures.push(`OLLM_VERSION must be 0.2.0; received ${version}`);
 required('OLLM_MODEL_ID');
+const apiKey = required('OLLM_API_KEY');
+if (apiKey && apiKey.length < 24) failures.push('OLLM_API_KEY must contain at least 24 characters');
 const backendUrl = required('OLLM_BACKEND_URL');
 required('OLLM_BACKEND_MODEL');
 
@@ -40,8 +42,9 @@ console.log(JSON.stringify({
   service: 'onegodian-llm',
   version,
   node: process.version,
+  completionAuthenticationRequired: true,
   backendConfigured: true,
   buildArtifactVerified: true,
   productionClaim: false,
-  note: 'Configuration/build preflight passed. Production still requires live backend, exact deployed SHA, readiness, completion provenance, and restart evidence.'
+  note: 'Configuration/build preflight passed. Production still requires live backend, exact deployed SHA, readiness, authenticated completion provenance, and restart evidence.'
 }, null, 2));
