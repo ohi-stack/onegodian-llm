@@ -1,4 +1,5 @@
 import http, { IncomingMessage, ServerResponse } from 'http';
+import crypto from 'crypto';
 import { runtimeConfig } from './runtime/config';
 import { backendConfigured, backendHealth, chatCompletion } from './runtime/backend';
 
@@ -12,6 +13,23 @@ function json(res: ServerResponse, status: number, payload: unknown): void {
     'cache-control': 'no-store'
   });
   res.end(body);
+}
+
+function constantTimeEqual(leftValue: string, rightValue: string): boolean {
+  const left = Buffer.from(leftValue);
+  const right = Buffer.from(rightValue);
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function completionAuthorized(req: IncomingMessage): boolean {
+  const requiredKey = runtimeConfig.OLLM_API_KEY.trim();
+  if (!requiredKey) return runtimeConfig.NODE_ENV !== 'production';
+  const direct = String(req.headers['x-ollm-key'] || '').trim();
+  const authorization = String(req.headers.authorization || '').trim();
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || '';
+  const presented = direct || bearer;
+  return Boolean(presented) && constantTimeEqual(presented, requiredKey);
 }
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -40,6 +58,7 @@ const server = http.createServer(async (req, res) => {
       model: runtimeConfig.OLLM_MODEL_ID,
       environment: runtimeConfig.NODE_ENV,
       backendConfigured: backendConfigured(),
+      completionAuthenticationRequired: Boolean(runtimeConfig.OLLM_API_KEY) || runtimeConfig.NODE_ENV === 'production',
       productionClaim: false,
       timestamp: new Date().toISOString()
     });
@@ -72,6 +91,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (method === 'POST' && url.pathname === '/v1/chat/completions') {
+    if (!completionAuthorized(req)) {
+      return json(res, 401, { error: { type: 'authentication_error', code: 'unauthorized', message: 'Valid OLLM API authentication is required.' } });
+    }
     if (!backendConfigured()) {
       return json(res, 503, {
         error: {
