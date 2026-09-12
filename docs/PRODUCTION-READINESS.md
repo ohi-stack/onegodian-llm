@@ -15,13 +15,14 @@ Version 0.2.0 introduces an explicit HTTP runtime with:
 - `GET /health` — process liveness and runtime identity;
 - `GET /ready` — live backend reachability/readiness;
 - `GET /v1/models` — OLLM model identity and backend configuration state;
-- `POST /v1/chat/completions` — provider-neutral OpenAI-compatible completion contract;
+- authenticated `POST /v1/chat/completions` — provider-neutral OpenAI-compatible completion contract;
 - explicit `503 ollm_backend_not_configured` behavior when no model backend exists;
-- backend-model provenance in successful completion responses;
+- server-side completion API authentication in production;
+- backend model, upstream request/response ID, latency, and usage provenance where available;
 - explicit `unverified_model_output` status and human-review boundary for consequential use;
-- request size and backend timeout limits;
+- request size and full response-body backend timeout limits;
 - graceful shutdown;
-- build, smoke, and production-preflight CI gates.
+- build, smoke, authentication, provenance, and production-preflight CI gates.
 
 ## Production invariants
 
@@ -29,15 +30,16 @@ Production may be claimed only after all of the following pass for one exact dep
 
 1. `npm run check` passes.
 2. `npm run build` produces `dist/index.js`.
-3. `npm run test:smoke` passes using the compiled runtime and an OpenAI-compatible mock backend.
+3. `npm run test:smoke` passes using the compiled runtime and an OpenAI-compatible mock backend, including unauthenticated-request rejection.
 4. `npm run preflight:production` passes with protected environment configuration.
 5. `NODE_ENV=production`, `OLLM_VERSION=0.2.0`, and the canonical OLLM model ID are explicitly configured.
-6. `OLLM_BACKEND_URL` and `OLLM_BACKEND_MODEL` reference a real authorized backend.
-7. `/ready` proves that backend reachable after deployment.
-8. A controlled live completion records OLLM model identity, actual backend model provenance, latency/usage where the backend supplies it, and the exact deployed SHA.
-9. Restart/redeploy preserves runtime configuration and returns to ready state.
-10. OMOS Model Gateway consumes OLLM through the same normalized provider contract used for other models.
-11. Consequential external actions remain governed by OMOS/ACC Human Gate; OLLM output alone does not authorize execution.
+6. `OLLM_API_KEY` is protected server-side and required for completion requests.
+7. `OLLM_BACKEND_URL` and `OLLM_BACKEND_MODEL` reference a real authorized backend; backend credentials are environment-only.
+8. `/ready` proves that backend reachable after deployment.
+9. A controlled authenticated live completion records OLLM model identity, actual backend model, upstream request/response IDs when available, latency/usage, and exact deployed SHA.
+10. Restart/redeploy preserves runtime configuration and returns to ready state.
+11. OMOS Model Gateway consumes OLLM through the same normalized provider contract used for other models.
+12. Consequential external actions remain governed by OMOS/ACC Human Gate; OLLM output alone does not authorize execution.
 
 ## Verification boundary
 
@@ -45,6 +47,6 @@ A successful model response is not factual verification. OLLM runtime success pr
 
 ## Backend boundary
 
-This slice targets an OpenAI-compatible backend protocol so OLLM can front an authorized local or hosted model without hard-coding OMOS to one model vendor. Backend credentials are environment-only and are not returned by runtime endpoints.
+This slice targets an OpenAI-compatible backend protocol so OLLM can front an authorized local or hosted model without hard-coding OMOS to one model vendor. Backend credentials and the OLLM API key are environment-only and are never returned by runtime endpoints.
 
 The legacy strategy-agent demonstration remains available as `npm run demo:strategy -- "<task>"`; it is no longer the production entrypoint.
