@@ -191,7 +191,25 @@ Initial product ladder:
 
 Exact prices are business configuration and should not be hard-coded into orchestration logic.
 
-## 10. Repository responsibilities
+## 10. MCP / external execution boundary
+
+OLLM's provider adapters are model-execution adapters. They do not automatically grant OLLM authority to perform arbitrary external data writes, tool actions, environment changes, deployments, or other consequential domain operations.
+
+Where OLLM later needs Data, Action, or Environment connectivity, that connectivity should use the OneGodian MCP Standard™ / OMOS Connection & Adaptation Layer™ or another explicitly approved governed interface rather than expanding model-provider adapters into privileged execution channels.
+
+The production boundary is:
+
+- **OLLM model adapters** — model invocation and provider-result normalization;
+- **MCP / Connection Layer** — interoperability for connected data/action/environment systems;
+- **OMOS** — connector permissions, governance, verification, and Decision Record evidence;
+- **ACC / OCP / OEG** — approved orchestration, policy authorization, and execution according to deployed architecture;
+- **Connected domain** — source of record for its own state and action result.
+
+A model output, synthesis result, confidence score, or caller-supplied approval boolean must never be treated as sufficient authority for a consequential external action.
+
+Permission and approval remain independent gates, and external action completion must be verified against the connected domain where the outcome matters.
+
+## 11. Repository responsibilities
 
 ### `ohi-stack/onegodian-llm`
 Owns:
@@ -213,6 +231,11 @@ Owns:
 ### `ohi-stack/ohi-control-plane`
 Owns shared governance/runtime policy, environment-level control, health and operational coordination when used by OLLM.
 
-## 11. Production gate
+### `ohi-stack/omos-site`
+Owns the current OMOS Connection & Adaptation runtime and executable OneGodian MCP connection-contract implementation where OLLM integrates through that governed surface.
+
+## 12. Production gate
 
 OLLM v1.0 is prohibited from being represented as complete until authentication, real provider execution, synthesis, persistence, metering, security controls, observability, CI validation, deployment, and rollback are demonstrably operational and repeatable.
+
+If OLLM exposes consequential external actions in a later release, the applicable connector permission, authoritative approval, domain verification, audit/provenance, and deployed-revision evidence must also be operational and repeatable before those actions may be represented as Production.
