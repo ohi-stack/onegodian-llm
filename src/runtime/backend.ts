@@ -11,11 +11,28 @@ function headers(): Record<string, string> {
   return result;
 }
 
-async function backendRequest(path: string, init: RequestInit = {}): Promise<Response> {
+async function backendJson(path: string, init: RequestInit = {}): Promise<{ response: Response; payload: any; latencyMs: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), runtimeConfig.OLLM_REQUEST_TIMEOUT_MS);
+  const started = Date.now();
   try {
-    return await fetch(endpoint(path), { ...init, headers: { ...headers(), ...(init.headers || {}) }, signal: controller.signal });
+    const response = await fetch(endpoint(path), {
+      ...init,
+      headers: { ...headers(), ...(init.headers || {}) },
+      signal: controller.signal
+    });
+    let payload: any;
+    try { payload = await response.json(); }
+    catch (error) {
+      if (controller.signal.aborted) throw new Error('ollm_backend_timeout');
+      throw new Error(`ollm_backend_invalid_json_${response.status}`);
+    }
+    return { response, payload, latencyMs: Date.now() - started };
+  } catch (error) {
+    if (controller.signal.aborted && !(error instanceof Error && error.message === 'ollm_backend_timeout')) {
+      throw new Error('ollm_backend_timeout');
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -26,36 +43,33 @@ export function backendConfigured(): boolean {
 }
 
 export async function backendHealth(): Promise<{ ok: boolean; state: string; latencyMs: number; model: string | null; error?: string }> {
-  const started = Date.now();
   if (!backendConfigured()) return { ok: false, state: 'not_configured', latencyMs: 0, model: null };
   try {
-    const response = await backendRequest('/v1/models', { method: 'GET' });
-    if (!response.ok) return { ok: false, state: `http_${response.status}`, latencyMs: Date.now() - started, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
-    await response.json();
-    return { ok: true, state: 'reachable', latencyMs: Date.now() - started, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
+    const { response, latencyMs } = await backendJson('/v1/models', { method: 'GET' });
+    if (!response.ok) return { ok: false, state: `http_${response.status}`, latencyMs, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
+    return { ok: true, state: 'reachable', latencyMs, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
   } catch (error) {
-    return { ok: false, state: 'unreachable', latencyMs: Date.now() - started, model: runtimeConfig.OLLM_BACKEND_MODEL || null, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, state: error instanceof Error && error.message === 'ollm_backend_timeout' ? 'timeout' : 'unreachable', latencyMs: runtimeConfig.OLLM_REQUEST_TIMEOUT_MS, model: runtimeConfig.OLLM_BACKEND_MODEL || null, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
 export async function chatCompletion(input: Record<string, unknown>): Promise<Record<string, unknown>> {
   if (!backendConfigured()) throw new Error('ollm_backend_not_configured');
-  const response = await backendRequest('/v1/chat/completions', {
+  const { response, payload, latencyMs } = await backendJson('/v1/chat/completions', {
     method: 'POST',
     body: JSON.stringify({ ...input, model: runtimeConfig.OLLM_BACKEND_MODEL })
   });
 
-  let payload: any;
-  try { payload = await response.json(); }
-  catch { throw new Error(`ollm_backend_invalid_json_${response.status}`); }
   if (!response.ok) {
     const error = new Error(`ollm_backend_http_${response.status}`);
     (error as any).status = response.status;
     (error as any).payload = payload;
     throw error;
   }
+  if (!payload || !Array.isArray(payload.choices)) throw new Error('ollm_backend_invalid_completion_contract');
 
-  const upstreamModel = payload?.model || runtimeConfig.OLLM_BACKEND_MODEL;
+  const upstreamModel = payload.model || runtimeConfig.OLLM_BACKEND_MODEL;
+  const upstreamRequestId = response.headers.get('x-request-id') || response.headers.get('request-id') || null;
   return {
     ...payload,
     model: runtimeConfig.OLLM_MODEL_ID,
@@ -63,6 +77,10 @@ export async function chatCompletion(input: Record<string, unknown>): Promise<Re
       runtime: 'onegodian-llm',
       runtimeVersion: runtimeConfig.OLLM_VERSION,
       backendModel: upstreamModel,
+      upstreamResponseId: payload.id || null,
+      upstreamRequestId,
+      latencyMs,
+      usage: payload.usage || null,
       verification: 'unverified_model_output',
       humanReviewRequiredForConsequentialUse: true
     }
