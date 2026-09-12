@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Core multi-model synthesis engine for the Onegodian ecosystem.",
+  "description": "Core multi-model synthesis engine for the OneGodian ecosystem.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -12,10 +12,17 @@
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "dotenv": "^17.4.2",
+    "openai": "^7.15.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22 <25"
   }
 }
