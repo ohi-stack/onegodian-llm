@@ -32,7 +32,7 @@ jobs:
       - name: Build runtime
         run: npm run build
 
-      - name: Runtime + backend contract smoke
+      - name: Runtime + backend + authentication smoke
         run: npm run test:smoke
 
       - name: Production preflight contract
@@ -40,6 +40,7 @@ jobs:
           NODE_ENV: production
           OLLM_VERSION: 0.2.0
           OLLM_MODEL_ID: onegodian-llm
+          OLLM_API_KEY: ci-ollm-production-key-000000000001
           OLLM_BACKEND_URL: https://backend.example.invalid
           OLLM_BACKEND_MODEL: production-model-placeholder
         run: npm run preflight:production
