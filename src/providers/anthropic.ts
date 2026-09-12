@@ -9,5 +9,6 @@ export async function runAnthropic(prompt: string): Promise<string> {
     messages: [{ role: "user", content: prompt }],
   });
 
-  return res.content[0]?.text || "";
+  const textBlock = res.content.find((block) => block.type === "text");
+  return textBlock?.text || "";
 }
