@@ -81,6 +81,15 @@ try {
   const models = await waitJson('/v1/models');
   if (models.data?.[0]?.id !== 'onegodian-llm-smoke') throw new Error('model registry mismatch');
 
+  if (!health.headers?.['x-request-id']) throw new Error('health response request id missing');
+
+  const wrongContentType = await fetch(`${base}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'text/plain' },
+    body: 'not-json'
+  });
+  if (wrongContentType.status !== 415) throw new Error(`unsupported content type returned ${wrongContentType.status}`);
+
   const unauthorized = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
