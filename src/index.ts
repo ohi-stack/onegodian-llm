@@ -165,15 +165,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (method === 'POST' && url.pathname === '/v1/chat/completions') {
-    if (!completionAuthorized(req)) {
-      return json(res, 401, {
-        error: { type: 'authentication_error', code: 'unauthorized', message: 'Valid OLLM API authentication is required.', requestId }
-      }, requestId);
-    }
     if (!withinRateLimit(req)) {
       res.setHeader('retry-after', '60');
       return json(res, 429, {
         error: { type: 'rate_limit_error', code: 'rate_limited', message: 'Too many requests. Retry later.', requestId }
+      }, requestId);
+    }
+    if (!completionAuthorized(req)) {
+      return json(res, 401, {
+        error: { type: 'authentication_error', code: 'unauthorized', message: 'Valid OLLM API authentication is required.', requestId }
       }, requestId);
     }
     const contentType = String(req.headers['content-type'] || '').toLowerCase();
@@ -188,7 +188,10 @@ const server = http.createServer(async (req, res) => {
       const result = await chatCompletion(input);
       return json(res, 200, result, requestId);
     } catch (error) {
-      const code = error instanceof Error ? error.message : 'ollm_runtime_error';
+      const rawCode = error instanceof Error ? error.message : 'ollm_runtime_error';
+      const code = /^(invalid_json|request_body_too_large|messages_invalid|content_type_required|ollm_backend_[a-z0-9_]+)$/.test(rawCode)
+        ? rawCode
+        : 'ollm_runtime_error';
       return sendError(res, requestId, code);
     }
   }
