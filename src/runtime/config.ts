@@ -12,7 +12,8 @@ const RuntimeEnv = z.object({
   OLLM_BACKEND_URL: z.string().url().optional(),
   OLLM_BACKEND_MODEL: z.string().min(1).optional(),
   OLLM_BACKEND_API_KEY: z.string().optional(),
-  OLLM_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().max(120000).default(30000)
+  OLLM_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().max(120000).default(30000),
+  OLLM_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().max(10000).default(60)
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV !== 'production') return;
   if (value.OLLM_API_KEY.trim().length < 24) {
