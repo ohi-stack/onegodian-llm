@@ -49,7 +49,8 @@ export async function backendHealth(): Promise<{ ok: boolean; state: string; lat
     if (!response.ok) return { ok: false, state: `http_${response.status}`, latencyMs, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
     return { ok: true, state: 'reachable', latencyMs, model: runtimeConfig.OLLM_BACKEND_MODEL || null };
   } catch (error) {
-    return { ok: false, state: error instanceof Error && error.message === 'ollm_backend_timeout' ? 'timeout' : 'unreachable', latencyMs: runtimeConfig.OLLM_REQUEST_TIMEOUT_MS, model: runtimeConfig.OLLM_BACKEND_MODEL || null, error: error instanceof Error ? error.message : String(error) };
+    const state = error instanceof Error && error.message === 'ollm_backend_timeout' ? 'timeout' : 'unreachable';
+    return { ok: false, state, latencyMs: runtimeConfig.OLLM_REQUEST_TIMEOUT_MS, model: runtimeConfig.OLLM_BACKEND_MODEL || null, error: state };
   }
 }
 

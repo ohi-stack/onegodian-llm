@@ -4,13 +4,16 @@ import { runtimeConfig } from './runtime/config';
 import { backendConfigured, backendHealth, chatCompletion } from './runtime/backend';
 
 const MAX_BODY_BYTES = 1024 * 1024;
+const RATE_WINDOW_MS = 60_000;
+const requestWindows = new Map<string, number[]>();
 
-function json(res: ServerResponse, status: number, payload: unknown): void {
+function json(res: ServerResponse, status: number, payload: unknown, requestId: string): void {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(body),
-    'cache-control': 'no-store'
+    'cache-control': 'no-store',
+    'x-request-id': requestId
   });
   res.end(body);
 }
@@ -20,6 +23,33 @@ function constantTimeEqual(leftValue: string, rightValue: string): boolean {
   const right = Buffer.from(rightValue);
   if (left.length !== right.length) return false;
   return crypto.timingSafeEqual(left, right);
+}
+
+function requestIdFor(req: IncomingMessage): string {
+  const incoming = String(req.headers['x-request-id'] || '').trim();
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(incoming) ? incoming : crypto.randomUUID();
+}
+
+function clientKey(req: IncomingMessage): string {
+  return String(req.socket.remoteAddress || 'unknown').slice(0, 128);
+}
+
+function withinRateLimit(req: IncomingMessage): boolean {
+  const now = Date.now();
+  const key = clientKey(req);
+  const timestamps = (requestWindows.get(key) || []).filter((value) => now - value < RATE_WINDOW_MS);
+  if (timestamps.length >= runtimeConfig.OLLM_RATE_LIMIT_PER_MINUTE) {
+    requestWindows.set(key, timestamps);
+    return false;
+  }
+  timestamps.push(now);
+  requestWindows.set(key, timestamps);
+  if (requestWindows.size > 10000) {
+    for (const [candidate, values] of requestWindows) {
+      if (!values.length || now - values[values.length - 1] >= RATE_WINDOW_MS) requestWindows.delete(candidate);
+    }
+  }
+  return true;
 }
 
 function completionAuthorized(req: IncomingMessage): boolean {
@@ -32,21 +62,65 @@ function completionAuthorized(req: IncomingMessage): boolean {
   return Boolean(presented) && constantTimeEqual(presented, requiredKey);
 }
 
-async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+async function readJson(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > MAX_BODY_BYTES) throw new Error('request_body_too_large');
+    if (size > MAX_BODY_BYTES) {
+      const error = new Error('request_body_too_large');
+      (error as Error & { status?: number }).status = 413;
+      throw error;
+    }
     chunks.push(buffer);
   }
   if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
-  catch { throw new Error('invalid_json'); }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw new Error('invalid_json');
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateCompletionInput(value: unknown): Record<string, unknown> {
+  if (!isRecord(value) || !Array.isArray(value.messages) || value.messages.length === 0 || value.messages.length > 200) {
+    throw new Error('messages_invalid');
+  }
+  for (const message of value.messages) {
+    if (!isRecord(message) || typeof message.role !== 'string' || !['system', 'user', 'assistant', 'tool'].includes(message.role)) {
+      throw new Error('messages_invalid');
+    }
+    if (typeof message.content !== 'string' || message.content.length > 64 * 1024) {
+      throw new Error('messages_invalid');
+    }
+  }
+  return value;
+}
+
+function publicError(code: string): { status: number; type: string; message: string } {
+  if (code === 'request_body_too_large') return { status: 413, type: 'invalid_request_error', message: 'Request body is too large.' };
+  if (code === 'invalid_json') return { status: 400, type: 'invalid_request_error', message: 'Request body must be valid JSON.' };
+  if (code === 'messages_invalid') return { status: 400, type: 'invalid_request_error', message: 'messages must contain 1–200 text messages with valid roles.' };
+  if (code === 'content_type_required') return { status: 415, type: 'invalid_request_error', message: 'Content-Type application/json is required.' };
+  if (code === 'ollm_backend_not_configured') return { status: 503, type: 'service_unavailable', message: 'OLLM has no configured model backend.' };
+  if (code.startsWith('ollm_backend_')) return { status: 502, type: 'upstream_error', message: 'The configured model backend could not complete the request.' };
+  return { status: 500, type: 'ollm_runtime_error', message: 'OLLM could not complete the request.' };
+}
+
+function sendError(res: ServerResponse, requestId: string, code: string): void {
+  const error = publicError(code);
+  json(res, error.status, {
+    error: { type: error.type, code, message: error.message, requestId }
+  }, requestId);
 }
 
 const server = http.createServer(async (req, res) => {
+  const requestId = requestIdFor(req);
   const method = req.method || 'GET';
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
@@ -61,7 +135,7 @@ const server = http.createServer(async (req, res) => {
       completionAuthenticationRequired: Boolean(runtimeConfig.OLLM_API_KEY) || runtimeConfig.NODE_ENV === 'production',
       productionClaim: false,
       timestamp: new Date().toISOString()
-    });
+    }, requestId);
   }
 
   if (method === 'GET' && (url.pathname === '/ready' || url.pathname === '/readyz')) {
@@ -73,7 +147,7 @@ const server = http.createServer(async (req, res) => {
       backend,
       productionClaim: false,
       timestamp: new Date().toISOString()
-    });
+    }, requestId);
   }
 
   if (method === 'GET' && url.pathname === '/v1/models') {
@@ -87,37 +161,50 @@ const server = http.createServer(async (req, res) => {
         backendModel: runtimeConfig.OLLM_BACKEND_MODEL || null,
         verification: 'runtime_configured_not_factually_verified'
       }]
-    });
+    }, requestId);
   }
 
   if (method === 'POST' && url.pathname === '/v1/chat/completions') {
+    if (!withinRateLimit(req)) {
+      res.setHeader('retry-after', '60');
+      return json(res, 429, {
+        error: { type: 'rate_limit_error', code: 'rate_limited', message: 'Too many requests. Retry later.', requestId }
+      }, requestId);
+    }
     if (!completionAuthorized(req)) {
-      return json(res, 401, { error: { type: 'authentication_error', code: 'unauthorized', message: 'Valid OLLM API authentication is required.' } });
+      return json(res, 401, {
+        error: { type: 'authentication_error', code: 'unauthorized', message: 'Valid OLLM API authentication is required.', requestId }
+      }, requestId);
+    }
+    const contentType = String(req.headers['content-type'] || '').toLowerCase();
+    if (!contentType.startsWith('application/json')) {
+      return sendError(res, requestId, 'content_type_required');
     }
     if (!backendConfigured()) {
-      return json(res, 503, {
-        error: {
-          type: 'service_unavailable',
-          code: 'ollm_backend_not_configured',
-          message: 'OLLM has no configured model backend. No completion was generated.'
-        }
-      });
+      return sendError(res, requestId, 'ollm_backend_not_configured');
     }
     try {
-      const input = await readJson(req);
-      if (!Array.isArray(input.messages)) {
-        return json(res, 400, { error: { type: 'invalid_request_error', code: 'messages_required', message: 'messages must be an array' } });
-      }
+      const input = validateCompletionInput(await readJson(req));
       const result = await chatCompletion(input);
-      return json(res, 200, result);
+      return json(res, 200, result, requestId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const status = message === 'invalid_json' || message === 'request_body_too_large' ? 400 : 502;
-      return json(res, status, { error: { type: 'ollm_runtime_error', code: message, message } });
+      const rawCode = error instanceof Error ? error.message : 'ollm_runtime_error';
+      const code = /^(invalid_json|request_body_too_large|messages_invalid|content_type_required|ollm_backend_[a-z0-9_]+)$/.test(rawCode)
+        ? rawCode
+        : 'ollm_runtime_error';
+      return sendError(res, requestId, code);
     }
   }
 
-  return json(res, 404, { error: { type: 'not_found', code: 'route_not_found', message: 'Route not found' } });
+  return json(res, 404, { error: { type: 'not_found', code: 'route_not_found', message: 'Route not found', requestId } }, requestId);
+});
+
+server.requestTimeout = runtimeConfig.OLLM_REQUEST_TIMEOUT_MS + 5_000;
+server.headersTimeout = runtimeConfig.OLLM_REQUEST_TIMEOUT_MS + 10_000;
+server.keepAliveTimeout = 5_000;
+server.on('error', (error) => {
+  console.error(JSON.stringify({ event: 'ollm_server_error', code: error instanceof Error ? error.name : 'server_error' }));
+  process.exitCode = 1;
 });
 
 server.listen(runtimeConfig.PORT, '0.0.0.0', () => {
@@ -132,7 +219,10 @@ server.listen(runtimeConfig.PORT, '0.0.0.0', () => {
   }));
 });
 
+let shuttingDown = false;
 function shutdown(signal: string): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(JSON.stringify({ event: 'ollm_shutdown', signal }));
   const timer = setTimeout(() => process.exit(1), 10000);
   timer.unref();
