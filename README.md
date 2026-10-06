@@ -1,8 +1,10 @@
-# OLLM — OneGodian LLM
+# OneGodian LLM Synthesis Engine™
 
-OLLM is the OneGodian multi-model intelligence orchestration product and governed synthesis runtime for the OneGodian ecosystem.
+**OLLM** remains the short product/runtime identifier. The canonical software-family name is **OneGodian LLM Synthesis Engine™**: the model-agnostic synthesis and integration layer for coordinating language-model capabilities across the OneGodian ecosystem.
 
 ## Canonical Product Architecture
+
+Canonical synthesis/OIPS contract: [`docs/LLM-SYNTHESIS-ENGINE.md`](docs/LLM-SYNTHESIS-ENGINE.md)
 
 - **Marketing:** `https://onegodian.org/ollm`
 - **Application:** `https://llm.onegodian.org`
