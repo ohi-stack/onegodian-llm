@@ -11,6 +11,18 @@ Canonical synthesis/OIPS contract: [`docs/LLM-SYNTHESIS-ENGINE.md`](docs/LLM-SYN
 - **Core repository:** `ohi-stack/onegodian-llm`
 - **Governance/runtime integration:** OHI / QOHI control-plane services
 
+## OMOS Integration
+
+The canonical public documentation and integration layer for the Synthesis Engine is OMOS.OneGodian.com. Phase I is documented in [docs/OMOS-PHASE-I-INTEGRATION.md](docs/OMOS-PHASE-I-INTEGRATION.md).
+
+Key public surfaces include:
+
+- https://omos.onegodian.com/onegodian-llm
+- https://omos.onegodian.com/architecture
+- https://omos.onegodian.com/ohi-output-pipeline
+
+Cross-platform execution and shared services route through api.OneGodian.org. The retired standalone app.OneGodian.com architecture is not an active dependency.
+
 ## Product Objective
 
 OLLM is being upgraded from an internal architecture repository into a production software product. The production user journey is:
