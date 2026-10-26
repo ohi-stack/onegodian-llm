@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ollm-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -24,7 +28,7 @@ jobs:
           node-version: 20
 
       - name: Install
-        run: npm install
+        run: npm install --no-audit --no-fund
 
       - name: Type check
         run: npm run check
@@ -34,6 +38,9 @@ jobs:
 
       - name: Runtime + backend + authentication smoke
         run: npm run test:smoke
+
+      - name: Dependency audit (high severity)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Production preflight contract
         env:
